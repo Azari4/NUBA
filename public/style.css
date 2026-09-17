@@ -54,14 +54,30 @@ footer { border-radius: 35px 35px 0 0; }
 
 /* Floating Actions */
 .floating-actions { position: fixed; bottom: 25px; right: 25px; display: flex; flex-direction: column; gap: 12px; z-index: 100; }
-.float-btn { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transition: 0.3s; cursor: pointer; border: none; text-decoration: none; color: white; font-size: 24px; font-weight: bold; }
+.float-btn { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transition: 0.3s; cursor: pointer; border: none; text-decoration: none; color: white; font-size: 24px; font-weight: bold; position: relative; }
 .float-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(0,0,0,0.2); }
 .float-wa { background: #25D366; }
 .float-top { background: var(--terra); opacity: 0; pointer-events: none; }
 .float-top.visible { opacity: 1; pointer-events: auto; }
-@media(max-width: 720px) { .floating-actions { bottom: 20px; right: 20px; } .float-btn { width: 50px; height: 50px; font-size: 22px; } }
+.float-cart { background: var(--terra); }
+.float-cart #cart-count { position: absolute; top: 0; right: 0; background: var(--ink); color: #fff; font-size: 12px; font-weight: bold; padding: 2px 7px; border-radius: 99px; transform: translate(20%, -20%); border: 2px solid #fffcf9; }
+@media(max-width: 720px) { .floating-actions { bottom: 20px; right: 20px; } .float-btn { width: 50px; height: 50px; } .float-btn svg { width: 22px; height: 22px; } }
 
-/* Conversión y accesibilidad */
+/* Trust Bar */
+.trust-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 40px max(7vw, 28px); background: #fffcf9; border-bottom: 1px solid var(--line); }
+.trust-item { display: flex; align-items: center; gap: 16px; background: rgba(255, 255, 255, 0.6); padding: 20px; border-radius: 20px; border: 1px solid rgba(234, 222, 212, 0.6); }
+.trust-item .emoji { font-size: 32px; flex-shrink: 0; }
+.trust-item b { color: var(--terra); font-family: Fraunces, serif; font-size: 18px; display: block; margin-bottom: 4px; }
+.trust-item p { margin: 0; font-size: 14px; color: var(--muted); }
+@media (max-width: 850px) { .trust-bar { grid-template-columns: 1fr; padding: 25px max(7vw, 28px); } }
+
+/* Category Pills */
+.pills-container { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 10px; }
+.pills-container::-webkit-scrollbar { height: 4px; }
+.pills-container::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; }
+.pill { padding: 10px 18px; background: #fff; border: 1px solid var(--line); border-radius: 99px; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; white-space: nowrap; transition: 0.2s; }
+.pill:hover { border-color: var(--terra); color: var(--terra); }
+.pill.active { background: var(--terra); border-color: var(--terra); color: white; }
 .product-actions button:disabled{cursor:not-allowed;opacity:.52;filter:grayscale(.25)}
 .product-description{font-size:13.5px;color:#76645e;margin:6px 0 12px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .stock{display:block;font-size:12px;color:#668065;font-weight:700;margin:-4px 0 12px}.stock.out{color:#b05f55}

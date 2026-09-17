@@ -90,7 +90,8 @@ const withVariants=async p=>{if(!p)return p;return {...p,variants:await db.all('
 
   // Start Server after DB init
   if (require.main === module) {
-    app.listen(process.env.PORT||3001,()=>console.log('NUBA lista en http://localhost:'+(process.env.PORT||3001)));
+    const port = process.env.PORT || 4000;
+    app.listen(port, () => console.log(`NUBA lista en http://localhost:${port}`));
   }
 })().catch(error => {
   console.error('No se pudo inicializar la base de datos:', error.message);
@@ -218,11 +219,11 @@ app.post('/api/orders', orderLimiter, async (req,res)=>{
     }).catch(e => console.error('Error enviando alerta por email:', e));
   }
 
-  res.json({orderNumber:number,total:subtotal,whatsapp:`https://wa.me/${process.env.WHATSAPP_NUMBER||'5491100000000'}?text=${encodeURIComponent(decodeURIComponent(msg))}`});
+  res.json({orderNumber:number,total:subtotal,whatsapp:`https://wa.me/${process.env.WHATSAPP_NUMBER||'54911'}?text=${encodeURIComponent(decodeURIComponent(msg))}`});
 });
 
 app.post('/api/admin/login',(req,res)=>{
-  const ok=req.body.username===(process.env.ADMIN_USER||'admin')&&req.body.password===process.env.ADMIN_PASSWORD;
+  const ok=req.body.username===(process.env.ADMIN_USER||'admin_default')&&req.body.password===process.env.ADMIN_PASSWORD;
   if(!ok)return res.status(401).json({error:'Usuario o contraseña incorrectos'});
   res.cookie('nuba_admin',jwt.sign({role:'admin'},secret),{httpOnly:true,sameSite:'strict',maxAge:86400000});
   res.json({ok:true})
