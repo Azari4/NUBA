@@ -81,7 +81,9 @@ const withVariants=async p=>{if(!p)return p;return {...p,variants:await db.all('
   await db.run('UPDATE categories SET active=0 WHERE id=6');
 
   // Start Server after DB init
-  app.listen(process.env.PORT||3001,()=>console.log('NUBA lista en http://localhost:'+(process.env.PORT||3001)));
+  if (require.main === module) {
+    app.listen(process.env.PORT||3001,()=>console.log('NUBA lista en http://localhost:'+(process.env.PORT||3001)));
+  }
 })().catch(error => {
   console.error('No se pudo inicializar la base de datos:', error.message);
   process.exit(1);
@@ -227,3 +229,5 @@ app.delete('/api/admin/categories/:id',adminOnly,async (req,res)=>{
   res.json({ok:true})
 });
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html'))); 
+
+module.exports = app;
