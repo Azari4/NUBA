@@ -9,6 +9,13 @@ const path = require('path');
 const multer = require('multer');
 const crypto = require('crypto');
 const { parse } = require('csv-parse/sync');
+const rateLimit = require('express-rate-limit');
+const nodemailer = require('nodemailer');
+
+const mailer = process.env.EMAIL_USER && process.env.EMAIL_PASS ? nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+}) : null;
 
 if (!process.env.JWT_SECRET) {
     console.error("ERROR CRÍTICO: JWT_SECRET no está configurado en .env");
@@ -24,6 +31,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const app = express(); 
+app.set('trust proxy', 1); // Trust reverse proxy (Netlify/Render) for accurate IP rate limiting
 let db;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -144,7 +152,13 @@ app.get('/api/products/:slug',async (req,res)=>{
   if(p)res.json(await withVariants(p));else res.status(404).json({error:'No encontrado'});
 });
 
-app.post('/api/orders',async (req,res)=>{
+const orderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Recibimos demasiados pedidos desde esta conexión. Por favor intentá de nuevo más tarde.' }
+});
+
+app.post('/api/orders', orderLimiter, async (req,res)=>{
   const {customer,items}=req.body;
   if(!customer?.name||!customer?.phone||!items?.length)return res.status(400).json({error:'Completá nombre, teléfono y productos.'});
   if(!Array.isArray(items)||items.length>25)return res.status(400).json({error:'El pedido no es válido.'});
@@ -175,7 +189,35 @@ app.post('/api/orders',async (req,res)=>{
   } catch (error) {
     return res.status(400).json({error:error.message||'No pudimos registrar el pedido.'});
   }
-  const msg=`Hola NUBA! ♡ Quiero realizar este pedido:%0A%0APEDIDO ${number}%0A%0AProductos:%0A${lines.map(x=>`• ${x.p.name}${x.v?' ('+x.v.value+')':''} — x${x.quantity} — $${(x.price*x.quantity).toLocaleString('es-AR')}`).join('%0A')}%0A%0ASubtotal: $${subtotal.toLocaleString('es-AR')}%0A%0ANombre: ${customer.name}%0ATeléfono: ${customer.phone}%0ALocalidad: ${customer.location||'-'}%0AEntrega: ${customer.delivery||'-'}%0A%0AComentarios:%0A${customer.comments||'-'}%0A%0A¡Gracias!`;
+  const totalQuantity = lines.reduce((acc, x) => acc + x.quantity, 0);
+  const requiresDeposit = totalQuantity > 5 || lines.some(x => x.p.customizable);
+  const commitment = requiresDeposit 
+    ? "Entiendo que al ser un pedido personalizado o mayorista, el tiempo de preparación es de 1 a 3 días y requiere una seña del 50%."
+    : "Entiendo que, de no haber stock para entrega inmediata, el tiempo de preparación es de 1 a 3 días según demanda.";
+  
+  const msg=`Hola NUBA! ♡ Confirmo mi pedido:%0A%0APEDIDO ${number}%0A%0AProductos:%0A${lines.map(x=>`• ${x.p.name}${x.v?' ('+x.v.value+')':''} — x${x.quantity} — $${(x.price*x.quantity).toLocaleString('es-AR')}`).join('%0A')}%0A%0ASubtotal: $${subtotal.toLocaleString('es-AR')}%0A%0ANombre: ${customer.name}%0ATeléfono: ${customer.phone}%0ALocalidad: ${customer.location||'-'}%0AEntrega: ${customer.delivery||'-'}%0A%0AComentarios:%0A${customer.comments||'-'}%0A%0A${commitment}%0A%0A¡Gracias!`;
+  
+  if (mailer && process.env.NOTIFICATION_EMAIL) {
+    const htmlLines = lines.map(x => `<li><b>${x.p.name}</b>${x.v ? ' (' + x.v.value + ')' : ''} x${x.quantity} - $${(x.price * x.quantity).toLocaleString('es-AR')}</li>`).join('');
+    mailer.sendMail({
+      from: `"NUBA Tienda" <${process.env.EMAIL_USER}>`,
+      to: process.env.NOTIFICATION_EMAIL,
+      subject: `🛒 Nuevo Pedido: ${number} - $${subtotal.toLocaleString('es-AR')}`,
+      html: `<div style="font-family:sans-serif;color:#333;line-height:1.5">
+        <h2 style="color:#d87c6b">¡Nuevo pedido en NUBA!</h2>
+        <p><b>Pedido:</b> ${number}</p>
+        <p><b>Cliente:</b> ${customer.name}</p>
+        <p><b>Teléfono:</b> <a href="https://wa.me/${String(customer.phone).replace(/\\D/g,'')}">${customer.phone}</a></p>
+        <p><b>Total:</b> $${subtotal.toLocaleString('es-AR')}</p>
+        <p><b>Entrega:</b> ${customer.delivery||'-'} (${customer.location||'-'})</p>
+        <p><b>Comentarios:</b> ${customer.comments||'-'}</p>
+        <hr>
+        <h3>Productos:</h3>
+        <ul>${htmlLines}</ul>
+      </div>`
+    }).catch(e => console.error('Error enviando alerta por email:', e));
+  }
+
   res.json({orderNumber:number,total:subtotal,whatsapp:`https://wa.me/${process.env.WHATSAPP_NUMBER||'5491100000000'}?text=${encodeURIComponent(decodeURIComponent(msg))}`});
 });
 
