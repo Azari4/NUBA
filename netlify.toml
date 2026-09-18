@@ -9,6 +9,7 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["pg", "sqlite3"]
+  included_files = ["migrations/**"]
 
 [[redirects]]
   from = "/api/*"
