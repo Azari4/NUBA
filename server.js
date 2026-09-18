@@ -48,7 +48,7 @@ const saveVariants=async (productId,variants=[],database=db)=>{await database.ru
 const saveImages=async (productId,images=[],database=db)=>{const clean=[...new Set(images.map(x=>String(x).trim()).filter(Boolean))];await database.run('DELETE FROM product_images WHERE product_id=?',productId);const add=await database.prepare('INSERT INTO product_images(product_id,image_url,sort_order) VALUES(?,?,?)');for(let i=0;i<clean.length;i++){await add.run(productId,clean[i],i);}await add.finalize();if(clean.length)await database.run('UPDATE products SET image=? WHERE id=?',clean[0],productId);};
 const withVariants=async p=>{if(!p)return p;return {...p,variants:await db.all('SELECT * FROM product_variants WHERE product_id=? ORDER BY additional_price',p.id),images:await db.all('SELECT * FROM product_images WHERE product_id=? ORDER BY sort_order,id',p.id)};};
 
-(async () => {
+let dbInitPromise = (async () => {
   db = createDatabase(process.env.DATABASE_URL);
   await db.exec(fs.readFileSync(path.join(__dirname, 'migrations', '001_initial.sql'), 'utf8'));
 
@@ -93,9 +93,20 @@ const withVariants=async p=>{if(!p)return p;return {...p,variants:await db.all('
     const port = process.env.PORT || 4000;
     app.listen(port, () => console.log(`NUBA lista en http://localhost:${port}`));
   }
-})().catch(error => {
+})();
+
+dbInitPromise.catch(error => {
   console.error('No se pudo inicializar la base de datos:', error.message);
-  process.exit(1);
+  if (require.main === module) process.exit(1);
+});
+
+app.use(async (req, res, next) => {
+  try {
+    await dbInitPromise;
+    next();
+  } catch (err) {
+    res.status(500).json({error: 'Error de inicialización de base de datos'});
+  }
 });
 
 app.post('/api/admin/import-catalog',adminOnly,upload.single('catalog'),async (req,res)=>{
