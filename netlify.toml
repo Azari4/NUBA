@@ -3,6 +3,9 @@
   functions = "netlify/functions"
   command = "npm install"
 
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "ADMIN_USER,WHATSAPP_NUMBER"
+
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["pg", "sqlite3"]
